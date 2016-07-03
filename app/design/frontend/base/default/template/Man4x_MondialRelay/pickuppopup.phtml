@@ -1,0 +1,309 @@
+<?php
+/**
+ * Copyright (c) 2013 Man4x
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ * @project     Magento Man4x Mondial Relay Module
+ * @desc        Template for pickup selection popup
+ * @block       Man4x_MondialRelay_Block_Checkout_Pickuppopup
+ * @author      Emmanuel Catrysse (man4x[@]hotmail[.]fr)
+ * @license     http://www.opensource.org/licenses/MIT  The MIT License (MIT)
+ */
+?>
+
+<script type="text/javascript">
+//<![CDATA[
+    if(!String.prototype.trim){ // for JS<1.8.1 
+        String.prototype.trim = function(){return this.replace(/^\s+|\s+$/g,'');};  
+    }
+    
+    function PickupForm(localeStr)
+    {
+        //google.maps.visualRefresh = true;
+        this.cityFld = $('pickup_city');
+        this.postcodeFld = $('pickup_postcode');
+        this.countryFld = $('pickup_country_id');       
+        this.loadingElmt = $('pickup-ajax-loading');
+        this.resultTitleElmt = $('pickup-results-title');
+        this.resultDataElmt = $('pickup-results-data');
+        this.localeStr = localeStr;
+        this.iconBaseUrl = '<?php echo substr($this->getSkinUrl('images/Man4x_MondialRelay/mondialrelay_mapicon_1.png'), 0, -5); ?>'; 
+        
+        var _mapOptions = {
+                zoom:       5,
+                minZoom:    5,
+                center:     new google.maps.LatLng(46.2276, 2.2137),
+                mapTypeId:  google.maps.MapTypeId.ROADMAP
+            }
+        this.googleMap = new google.maps.Map($('pickup-map-canvas'), _mapOptions);            
+ 
+        this.area = null;
+        this.activePickup = '';                
+        this.pickupSet = new Object();
+        
+        this.closeForm = function() {$('pickup-bkg').ancestors()[0].hide();}
+
+        this.searchPickups = function() {
+            if (this.postcodeFld.getValue().replace(/\s/g, '') == '') {
+                window.alert(this.localeStr['empty_postcode']); return;
+            }
+            this.clearPickupSet();
+            this.pleaseWait(true);
+            var _this = this;            
+            new Ajax.Request('<?php echo $this->getPickupGatheringUrl(); ?>',
+                {   
+                    evalScripts:    true,
+                    parameters:     {   country_id: this.countryFld.getValue(),
+                                        city: (this.cityFld.getValue()).trim(),
+                                        postcode: (this.postcodeFld.getValue()).trim()
+                                    },
+                    onSuccess:      function(transport) {_this.fetchResult(transport.responseJSON);}
+                }
+            );           
+        }
+        
+        this.fetchResult = function(result) {
+            if (result instanceof Object) {
+                this.pleaseWait(false);
+                if (result.type == 'error') {alert(result.title)}
+                else {
+                    this.resultTitleElmt.update(result.title);
+                    if (result.type == 'pickup-list') {this.buildPickupSet(result.data)}
+                        else {this.displayCitySet(result.data);}
+                }
+            }
+        }
+        
+        this.displayCitytSet = function(city) {}
+	
+        // for Prototype < 1.7.1
+        this.cloneElmt = function(element) {
+            var clone = element.cloneNode(true);
+            clone._prototypeUID = void 0;
+            var descendants = Element.select(clone, '*'), i = descendants.length;
+            while (i--) {descendants[i]._prototypeUID = void 0;}
+            return Element.extend(clone);
+        }
+		
+        this.buildPickupSet = function(pickup) {
+            var _infoElmt = new Element('a', {href: 'javascript:void(0)', 'class': 'info-link'}).update(this.localeStr['info']);
+            var _selectElmt = new Element('a', {href: 'javascript:void(0)', 'class': 'select-link'}).update(this.localeStr['select']);                      
+            this.area = new google.maps.LatLngBounds();
+            var _i = 0;         
+            while (pickup.length) {
+                _i++;
+                var _pickup = pickup.shift();
+                var _htmltitle = "<h1>" + _pickup.name + "</h1><p class='p-address'>" + _pickup.street + "<br/>" + _pickup.postcode + " " + _pickup.city + "</p>";
+                var _div = new Element('div', {id: 'pid_' + _pickup.id, 'class': 'p-item icon-' + _i}).update(_htmltitle);
+                var __info = this.cloneElmt(_infoElmt);
+                var __select = this.cloneElmt(_selectElmt);
+                _div.insert(__info);
+                _div.insert({bottom: __select});
+                this.resultDataElmt.insert(_div);
+                _pickup.divData = _div;               
+                var _markerOptions = {
+                    map:        this.googleMap,
+                    icon:       this.iconBaseUrl + _i + '.png',
+                    animation:  google.maps.Animation.DROP,
+                    position:   new google.maps.LatLng(_pickup.latitude, _pickup.longitude),
+                    pickup:      _pickup
+                };               
+                var _marker = new google.maps.Marker(_markerOptions);               
+                _pickup.markerEventId = google.maps.event.addListener(_marker, 'click',
+                    (function(marker, obj){return function() {obj.highlightPickup(marker.pickup, false, true);}})(_marker, this));               
+                _pickup.marker = _marker;               
+                this.area.extend(_markerOptions.position);
+                this.pickupSet[_pickup.id] = _pickup;
+            }           
+            this.googleMap.fitBounds(this.area);
+            this.googleMap.panBy(1, 0);
+            this.pleaseWait(false);
+        }
+        
+        this.clearPickupSet = function() {
+            this.activePickup = null;
+            var _key;
+            for (_key in this.pickupSet) {
+                if (this.pickupSet[_key].id) {
+                    var _pickup = this.pickupSet[_key];
+                    _pickup.divData.remove();
+                    if (_pickup.markerEventId) {google.maps.event.removeListener(_pickup.markerEventId);}
+                    _pickup.marker.setMap(null);
+                    delete this.pickupSet[_key];
+                }
+            }
+        }
+        
+        this.highlightPickup = function(pickup, center, scroll) {
+            if (pickup instanceof Element) {pickup = this.pickupSet[pickup.getAttribute('id').substring(4)];}
+            if (pickup != this.activePickup) {
+                if (this.activePickup) {
+                    this.activePickup.marker.setAnimation(null);
+                    this.activePickup.divData.removeClassName('is-active');
+                }
+                pickup.marker.setAnimation(google.maps.Animation.BOUNCE);
+                pickup.divData.addClassName('is-active');
+		if (scroll) {this.resultDataElmt.scrollTop = pickup.divData.positionedOffset()[1];}
+                if (center) {this.googleMap.panTo(pickup.marker.position);}
+                this.activePickup = pickup;
+            }
+        }
+        
+        this.displayDetails = function(linkElmt) {
+            this.pleaseWait(true);
+            var _id = $(linkElmt.parentNode).getAttribute('id').substring(4);
+            if (this.pickupSet[_id]) {
+                var _this = this;           
+                new Ajax.Request('<?php echo $this->getPickupDetailsUrl(); ?>', {   
+                        evalScripts:    true,
+                        parameters:     {pickup_id: _id, country_id: this.pickupSet[_id].country_id},
+                        onSuccess:      function(transport) {_this.displayDetailsResult(_id, transport.responseJSON);}
+                    }
+                );                             
+            }
+        }
+
+        this.displayDetailsResult = function(id, result) {
+            this.pleaseWait(false);
+            if (result instanceof Object) {
+                if (result.type == 'error') {alert(result.title);}
+                else {
+                    var _div = this.pickupSet[id].divData;
+                    var _link = _div.select('.info-link')[0] || _div.down('a');
+                    _link.remove();
+                    var _tablehtml = '<table class="opening-hours">';
+                    while (result.data.length) {
+                        var _day = result.data.shift();
+                        _tablehtml += '<tr><td class="day">' + _day['day'] + '</td><td class="hours">' + _day['hours'] + '</td><tr>';
+                    }
+                    var _table = $(new Element('table'));
+                    _table.innerHTML = _tablehtml;
+                    _table.addClassName('p-details');
+                    _div.insert(_table);
+                }
+            }
+        }
+        
+        this.selectPickup = function(linkElmt) {
+            var _id = $(linkElmt.parentNode).getAttribute('id').substring(4);
+            if (this.pickupSet[_id]) {
+                this.pleaseWait(true);
+                var _pickup = this.pickupSet[_id];
+                $('pickup-address').update('<span class="name">' + _pickup.name + '</span> <span class="address">' + _pickup.street + '</span> <span class="postcode">' + _pickup.postcode + '</span> <span class="city">' + _pickup.city + '</span>');
+                $('pickup-selected').show();
+                var _this = this;
+                new Ajax.Request('<?php echo $this->getSavePickupinSessionUrl(); ?>', {   
+                        parameters:     {   id:         _id,
+                                            name:       _pickup.name,
+                                            street:     _pickup.street,
+                                            postcode:   _pickup.postcode,
+                                            city:       _pickup.city,
+                                            country_id: _pickup.country_id
+                                        },
+                        onSuccess:      function(transport) {
+                                            _this.pleaseWait(false);
+                                            $('pickup-selected').show();
+                                            $('s_method_mondialrelaypickup_24R').enable();
+                                            $('s_method_mondialrelaypickup_24R').checked = true;
+                                            $('pickup-ajax-loading').hide();
+                                            $('pickup-bkg').ancestors()[0].hide();
+                                        }
+                    }
+                );                             
+            }
+        }
+		
+        this.clickHandler = function(event) {
+            var _elmt = event.findElement();
+            if (_elmt.hasClassName('info-link') || (_elmt.getAttribute('className') == 'info-link')) {this.displayDetails(_elmt);}
+            else if (_elmt.hasClassName('select-link')  || (_elmt.getAttribute('className') == 'select-link')) {this.selectPickup(_elmt);}
+            else {
+                var _elmt = event.findElement('.p-item') || event.findElement().up('div');
+                if (_elmt && _elmt != document) {this.highlightPickup(_elmt, true, false);}
+            }
+        }
+		
+        $('pickup_search_btn').observe('click', this.searchPickups.bind(this));
+		
+	this.resultDataElmt.observe('click', this.clickHandler.bind(this));
+        
+        this.pleaseWait = function(value) {
+            if (value) {this.loadingElmt.show(); this.resultDataElmt.hide();}
+            else {this.loadingElmt.hide(); this.resultDataElmt.show();}
+        }
+        
+        $('pickup-bkg').observe('click',(function(obj){return function() {obj.closeForm();}})(this)); 
+        $('pickup-close').observe('click',(function(obj){return function() {obj.closeForm();}})(this)); 
+    }           
+    
+
+    window.initialize = function() {man4x_pickup = new PickupForm(<?php echo $this->getLocaleStr() ?>).searchPickups();}
+    
+    var script = window.document.createElement("script");
+    script.type = "text/javascript";
+    script.src = "<?php echo (Mage::app()->getStore()->isCurrentlySecure() ? 'https' : 'http') ?>://maps.googleapis.com/maps/api/js?sensor=false&callback=initialize";
+    window.document.body.appendChild(script);
+//]]>
+</script>
+
+<div id="pickup-bkg"></div>
+
+<div id="pickup-block">
+    
+    <div id="pickup-close">
+        <a><?php echo $this->__('Close this window') ?></a>
+    </div>
+    
+    
+    <div id="pickup-form">
+        <h2 class="legend"><?php echo $this->__('Pick-up locations search') ?></h2>
+                
+        <ul class="form-list">
+            <li class="fields">
+                <div class="field postcode">
+                    <label for="pickup_postcode" class="required"><em>*</em><?php echo $this->__('Zip/Postal Code') ?></label>
+                    <div class="input-box">
+                        <input type="text" id="pickup_postcode" name="pickup_postcode" value="<?php echo $this->getAddressValue('postcode') ?>" title="<?php echo $this->__('Zip/Postal Code') ?>" class="input-text validate-zip-international" />
+                    </div>
+                </div>
+                <div class="field" style="display:none;">
+                    <label for="pickup_city" class="required"><?php echo $this->__('City') ?></label>
+                    <div class="input-box">
+                        <input type="text" id="pickup_city" name="pickup_city" value="<?php echo $this->getAddressValue('city') ?>" title="<?php echo $this->__('City') ?>" class="input-text" />
+                    </div>
+                </div>
+                <div class="field country">
+                    <label for="pickup_country_id" class="required"><em>*</em><?php echo $this->__('Country') ?></label>
+                    <div class="input-box">
+                        <?php echo $this->getCountryHtmlSelect() ?>
+                    </div>
+                </div>
+                <button id="pickup_search_btn" title="<?php echo $this->__('Search') ?>" class="button"><span><span><?php echo $this->__('Search') ?></span></span></button>
+            </li>
+        </ul>
+    </div>
+    
+    <div id="pickup-results">
+        <h2 id="pickup-results-title"></h2>
+        <div id="pickup-ajax-loading" style="display: none;">
+            <img src="<?php echo $this->getSkinUrl('images/Man4x_MondialRelay/mondialrelay_ajax_loading.gif'); ?>" />
+            <p><?php echo $this->__('Please wait while loading Mondial Relay data...'); ?></p>
+        </div>
+        <div id="pickup-results-data">
+        </div>
+    </div>
+
+    <div id="pickup-map">
+        <div id="pickup-map-canvas" style="width: 100%; height: 100%;"></div>
+    </div>        
+    
+</div>

@@ -1,0 +1,118 @@
+<?php
+/**
+ * Copyright (c) 2013 Man4x
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ * @project     Magento Man4x Mondial Relay Module
+ * @desc        Template for dealing Mondial Relay shipping methods (pick-up selection and pick-up info)
+ *              Added through handle <checkout_onepage_shippingmethod>
+ * @block       Man4x_MondialRelay_Block_Info
+ * @author      Emmanuel Catrysse (man4x[@]hotmail[.]fr)
+ * @license     http://www.opensource.org/licenses/MIT  The MIT License (MIT)
+ */
+?>
+
+<script type="text/javascript">
+//<![CDATA[
+    function anchorToMethodDescription(e) {
+        // return element where to insert method description
+        if (e.parentNode.hasClassName('no-display')) {return e.parentNode.parentNode;}
+        else {return $(e.parentNode);}
+    }
+    function anchorToPickupSelectionLink(e) {
+        // return element where to insert pickup selection link
+        if (e.parentNode.hasClassName('no-display')) {return e.parentNode.parentNode;}
+        else {return $(e.parentNode);}
+    }
+    function anchorToInfoLink(e) {
+        // return element where to insert pickup info link
+        return $(e.next('p'));
+    }    
+    <?php echo $this->getMethodsDescription() ?>
+    // Add description for Mondial Relay shipping methods
+    // Add a link to open pick-up selection form, a div to show the selected pick-up and an hidden form field
+    $$('input[id*=s_method_]').each(
+        function(e) {
+            e = $(e);
+            Event.observe(e, 'click', function() {
+                // Enable/disable the selected pickup div
+                e.readAttribute('id') == 's_method_mondialrelaypickup_24R' ? $('pickup-selected').show() : $('pickup-selected').hide();
+            });          
+            var _method = e.readAttribute('id'); 
+            if (_method.indexOf('mondialrelay') != -1) {
+                var _parent = anchorToMethodDescription(e);
+                _parent.insert("<p class='method-description'>" + _methodsDesc[_method.substring(9)] + "</p>");                
+                if (_method.indexOf('pickup') != -1) {
+                    if (<?php echo $this->onMapSelection() ?>) {
+                        e.checked = false;
+                        e.disable();
+                        var _link = new Element('a', {id: 'pickup-selection-link', href: 'javascript:void(0)'}).update("<?php echo (Mage::helper('mondialrelay')->__('Click to select your pick-up location')); ?>");
+                        _parent = anchorToPickupSelectionLink(e);
+                        _parent.insert(_link);
+                        
+                        Event.observe(_link, 'click', function() {
+                            var _docDim = document.viewport.getDimensions();
+                            if ($('pickup_popup')) {$('pickup_popup').show();}
+                            else {
+                                $(document.body).insert({bottom: '<div id="pickup_popup"></div>'});
+                                new Ajax.Request('<?php echo $this->getPickupPopupUrl(); ?>', {
+                                    evalScripts:    true,
+                                    parameters:     {   height: _docDim.height,
+                                                        width:  _docDim.width
+                                                    },
+                                    onCreate:       function() {$('pickup-please-wait').show();},
+                                    onSuccess:      function(transport) {
+                                                        $('pickup-please-wait').hide();
+                                                        $('pickup_popup').update();
+                                                        $('pickup_popup').update(transport.responseText);
+                                                    }
+                                });
+                            }
+                        });
+                    
+                        var _divWait = new Element('div', {id: 'pickup-please-wait', style: 'display:none;'}).update("<img src='<?php echo $this->getSkinUrl('images/Man4x_MondialRelay/mondialrelay_ajax_loading_50x55.gif')?>' />");
+                        _parent.insert(_divWait);
+                        var _div = new Element('div', {id: 'pickup-selected', style: 'display:none;'}).update("<p class='message'><?php echo (Mage::helper('mondialrelay')->__('Selected pick-up:'))?></p><div id='pickup-address'></p>");
+                        _parent.insert(_div);
+                    }
+                    else if (_method.split('_').length === 5) {
+                        var _link = new Element('a', {'class': 'pickup-details-link', href: 'javascript:void(0)'}).update("<?php echo (Mage::helper('mondialrelay')->__('(More info)')); ?>");
+                        var _anchor = anchorToInfoLink(e);
+                        _anchor.insert(_link);                        
+
+                        Event.observe(_link, 'click', function() {
+                            var _docDim = document.viewport.getDimensions();
+                            $(document.body).insert({bottom: '<div id="pickup_popup"></div>'});
+                            new Ajax.Request('<?php echo $this->getPickupInfoUrl(); ?>', {
+                                evalScripts:    true,
+                                parameters:     {   pickup_id:   _method.split('_')[4],
+                                                    height:     _docDim.height,
+                                                    width:      _docDim.width
+                                                },
+                                onCreate:       function() {
+                                                    var _divWait = new Element('div', {id: 'pickup-please-wait'}).update("<img src='<?php echo $this->getSkinUrl('images/Man4x_MondialRelay/mondialrelay_ajax_loading_50x55.gif')?>' />");
+                                                    _parent.insert(_divWait);
+                                                },
+                                onSuccess:      function(transport) {
+                                                    $('pickup-please-wait').remove();
+                                                    $('pickup_popup').update();
+                                                    $('pickup_popup').update(transport.responseText);
+                                                }
+                            });
+                        });
+                    }
+                }                
+            }
+        }
+    )
+//]]>
+</script>

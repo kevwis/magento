@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<config>
+	<modules>
+		<Man4x_MondialRelay>
+			<active>true</active>
+			<codePool>community</codePool>
+		</Man4x_MondialRelay>
+	</modules>
+</config>

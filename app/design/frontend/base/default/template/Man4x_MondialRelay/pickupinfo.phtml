@@ -1,0 +1,92 @@
+<?php
+/**
+ * Copyright (c) 2013 Man4x
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ * @project     Magento Man4x Mondial Relay Module
+ * @desc        Template for pickup info popup
+ * @block       Man4x_MondialRelay_Block_Checkout_Pickuppopup
+ * @author      Emmanuel Catrysse (man4x[@]hotmail[.]fr)
+ * @license     http://www.opensource.org/licenses/MIT  The MIT License (MIT)
+ */
+?>
+<script type="text/javascript">
+//<![CDATA[
+
+window.initialize = function() {
+    var mapOptions = {
+        zoom:       15,
+        minZoom:    5,
+        center:     new google.maps.LatLng(46.2276, 2.2137),
+        mapTypeId:  google.maps.MapTypeId.ROADMAP
+    };
+    var googleMap = new google.maps.Map($('pickup-map-canvas'), mapOptions);
+    var markerOptions = {
+        map:        googleMap,
+        icon:       "<?php echo $this->getSkinUrl('images/Man4x_MondialRelay/mondialrelay_mapicon.png') ?>",
+        animation:  google.maps.Animation.DROP,
+        position:   new google.maps.LatLng(<?php echo $this->getPickupLat() ?>, <?php echo $this->getPickupLong() ?>)
+    };               
+    var marker = new google.maps.Marker(markerOptions);
+    googleMap.panTo(marker.getPosition());
+}
+
+var script = window.document.createElement("script");
+script.type = "text/javascript";
+script.src = "<?php echo (Mage::app()->getStore()->isCurrentlySecure() ? 'https' : 'http') ?>://maps.googleapis.com/maps/api/js?sensor=false&callback=initialize";
+window.document.body.appendChild(script);
+
+//]]>
+</script>
+
+<div id="pickup-bkg"></div>
+
+<div id="pickup-block">
+    
+    <div id="pickup-close">
+        <a><?php echo $this->__('Close this window') ?></a>
+    </div>
+
+    <div id="pickup-form">
+        <h2 id="pickup-results-title"><?php echo $this->__('Pick-up details') ?></h2>
+        <h1><?php echo $this->getPickupName() ?></h1>
+        <p class="p-address"><?php echo $this->getPickupAddress() ?></p>
+        <?php if ($_locHint = $this->getPickupLocHint()): ?>
+            <div id="pickup-lochint">
+                <?php echo $_locHint ?>
+            </div>
+        <?php endif; ?>
+    </div>
+    
+    <div id="pickup-results">
+        <div id="pickup-results-data">
+            <img id="pickup-picture" src="<?php echo $this->getPickupPicture() ?>" />
+            <div class="p-item">
+                <table class="p-details">
+                    <?php echo $this->getPickupOpeningHours() ?>
+                </table>
+            </div>
+        </div>
+    </div>
+        
+    <div id="pickup-map">
+        <div id="pickup-map-canvas" style="width: 100%; height: 100%;"></div>
+    </div>        
+              
+</div>
+
+<script type="text/javascript">
+//<![CDATA[    
+Event.observe($('pickup-bkg'), 'click', function() {$('pickup_popup').remove();});
+Event.observe($('pickup-close'), 'click', function() {$('pickup_popup').remove();});
+//]]>
+</script>

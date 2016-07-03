@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<config>
+    <menu>
+        <sales translate="title" module="mondialrelay">
+            <title>Sales</title>
+            <sort_order>20</sort_order>
+            <depends>
+                <module>Mage_Sales</module>
+            </depends>
+            <children>
+                <mondialrelay translate="title" module="mondialrelay">
+                    <title>Mondial Relay</title>
+                    <sort_order>31</sort_order>
+                    <children>
+                        <massshipping translate="title" module="mondialrelay">
+                            <title>Mass Shipping</title>
+                            <action>mondialrelay/sales_shipping/massShippingGrid</action>
+                            <sort_order>10</sort_order>
+                        </massshipping>
+                        <labelprinting translate="title" module="mondialrelay">
+                            <title>Labels Printing</title>
+                            <action>mondialrelay/sales_shipping/massLabelPrintingGrid</action>
+                            <sort_order>20</sort_order>
+                        </labelprinting>
+                    </children>
+                </mondialrelay>
+            </children>
+        </sales>
+    </menu>
+    <acl>
+        <resources>
+            <admin>
+                <children>
+                    <sales translate="title" module="sales">
+                        <title>Sales</title>
+                        <sort_order>20</sort_order>
+                        <children>
+                            <mondialrelay translate="title" module="mondialrelay">
+                                <title>Mondial Relay</title>
+                                <sort_order>31</sort_order>
+                                <children>
+                                    <massshipping translate="title" module="mondialrelay">
+                                        <title>Mass Shipping</title>
+                                        <sort_order>10</sort_order>
+                                    </massshipping>
+                                    <labelprinting translate="title" module="mondialrelay">
+                                        <title>Labels Printing</title>
+                                        <sort_order>20</sort_order>
+                                    </labelprinting>
+                                </children>
+                            </mondialrelay>
+                        </children>
+                    </sales>
+                </children>
+            </admin>
+        </resources>
+    </acl>    
+</config>

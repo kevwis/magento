@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<layout version="0.1.0">
+
+    <checkout_onepage_index>
+        <reference name="head">
+            <action method="addCss" ifconfig="carriers/mondialrelaypickup/active">
+                <stylesheet>css/Man4x_MondialRelay.css</stylesheet>
+            </action>            
+        </reference>        
+    </checkout_onepage_index>
+
+    <checkout_onepage_shippingmethod>
+        <reference name="root">
+            <block type="mondialrelay/checkout_shippingmethods" name="mondialrelay_shippingmethods" output="toHtml" after='-' template="Man4x_MondialRelay/shippingmethods.phtml" />
+        </reference>
+    </checkout_onepage_shippingmethod>
+
+
+<!-- Idev OneStepCheckout layout -->
+    <onestepcheckout_index_index>
+        <reference name="head">
+            <action method="addCss" ifconfig="carriers/mondialrelaypickup/active">
+                <stylesheet>css/Man4x_MondialRelay.css</stylesheet>
+            </action>            
+        </reference>   
+        <reference name="onestepcheckout.checkout">
+            <block type="mondialrelay/checkout_shippingmethods" name="mondialrelay_shippingmethods" output="toHtml" after='choose-shipping-method' template="Man4x_MondialRelay/shippingmethods.phtml" />            
+        </reference>
+    </onestepcheckout_index_index>
+
+    <onestepcheckout_ajax_save_billing>
+        <reference name="choose-shipping-method">
+            <block type="mondialrelay/checkout_shippingmethods" name="mondialrelay_shippingmethods" template="Man4x_MondialRelay/shippingmethods.phtml" />
+        </reference>
+    </onestepcheckout_ajax_save_billing>
+</layout>
